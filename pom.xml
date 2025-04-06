@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                        https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.4</version>
+        <relativePath />
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>br.com.mailience</groupId>
+    <artifactId>mailience</artifactId>
+    <packaging>jar</packaging>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>ML - Mailience</name>
+    <description>Mailience é uma PoC focada no envio resiliente de e-mails em
+        larga escala, aplicando padrões como Circuit Breaker, Rate Limiter,
+        Retry e Pooling SMTP. Ideal para cenários críticos como promoções e
+        eventos, foi construída com Spring Boot e Resilience4j para testar
+        robustez e escalabilidade.
+    </description>
+    
+    <url>https://github.com/danylo-macelai/mailience</url>
+    
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://github.com/danylo-macelai/mailience?tab=MIT-1-ov-file</url>
+        </license>
+    </licenses> 
+    
+    <developers>
+        <developer>
+            <name>contribuidores</name>
+            <url>https://github.com/danylo-macelai/mailience/graphs/contributors</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection />
+        <developerConnection />
+        <tag />
+        <url>https://github.com/danylo-macelai/mailience</url>
+    </scm>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${maven.compiler.release}</source>
+                    <target>${maven.compiler.release}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
