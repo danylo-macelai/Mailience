@@ -23,8 +23,10 @@
  */
 package br.com.mailience;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Testes da aplicação Mailience.
@@ -35,9 +37,11 @@ import org.springframework.boot.test.context.SpringBootTest;
  * </p>
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class MailienceApplicationTests {
 
     @Test
+    @DisplayName("Deve carregar o contexto da aplicação Spring")
     void contextLoads() {
     }
 
