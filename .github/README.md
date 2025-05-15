@@ -11,6 +11,7 @@
     <h3>🔗 Links Úteis</h3>
     <div align="left"> 
 
+   [![Spring - Task Execution and Scheduling](https://img.shields.io/badge/Task%20Execution%20and%20Scheduling-Spring-8BC34A)](https://docs.spring.io/spring-framework/reference/integration/scheduling.html)
    [![Spring - Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-Spring-8BC34A)](https://docs.spring.io/spring-data/jpa/reference/jpa.html)
    [![Spring - jpa.java-config](https://img.shields.io/badge/jpa.java-config-FF5722)](https://docs.spring.io/spring-data/jpa/reference/repositories/create-instances.html#jpa.java-config)
    [![H2 - Database](https://img.shields.io/badge/Database-H2-9C27B0)](https://www.h2database.com/html/installation.html)
