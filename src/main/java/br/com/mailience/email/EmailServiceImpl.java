@@ -26,6 +26,7 @@ package br.com.mailience.email;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -44,10 +45,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class EmailServiceImpl implements EmailService {
 
-    private final int             workQueue = 100;
+    private final int             workQueue;
     private final EmailRepository repository;
 
-    public EmailServiceImpl(final EmailRepository repository) {
+    public EmailServiceImpl(@Value("${mailience.executor.work-queue}") final int workQueue, //
+            final EmailRepository repository) {
+        this.workQueue = workQueue;
         this.repository = repository;
     }
 
@@ -68,6 +71,16 @@ class EmailServiceImpl implements EmailService {
     @Transactional
     public EmailTO save(final EmailTO email) {
         return repository.save(email);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void send(final EmailTO email) {
+
+        log.info("✅ Enviado para {}", email.getRecipient());
+
     }
 
 }

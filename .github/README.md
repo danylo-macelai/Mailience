@@ -11,6 +11,9 @@
     <h3>🔗 Links Úteis</h3>
     <div align="left"> 
 
+   [![guide - CompletableFuture](https://img.shields.io/badge/Completable--Future-guide-8BC34A)](https://concurrencydeepdives.com/guide-completable-future/)
+   [![Oracle - Executor](https://img.shields.io/badge/Executor-oracle-8BC34A)](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html)
+   [![Oracle - CompletableFuture](https://img.shields.io/badge/CompletableFuture-oracle-8BC34A)](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/CompletableFuture.html)
    [![Spring - Task Execution and Scheduling](https://img.shields.io/badge/Task%20Execution%20and%20Scheduling-Spring-8BC34A)](https://docs.spring.io/spring-framework/reference/integration/scheduling.html)
    [![Spring - Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-Spring-8BC34A)](https://docs.spring.io/spring-data/jpa/reference/jpa.html)
    [![Spring - jpa.java-config](https://img.shields.io/badge/jpa.java-config-FF5722)](https://docs.spring.io/spring-data/jpa/reference/repositories/create-instances.html#jpa.java-config)

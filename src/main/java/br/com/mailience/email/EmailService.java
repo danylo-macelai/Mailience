@@ -35,13 +35,25 @@ import java.util.List;
 public interface EmailService {
 
     /**
-     * Busca e-mails com status pendente ou falho para processamento em lote.
+     * Busca e-mails com status pendente ou em falha para processamento em lote.
+     *
+     * @param statuses um ou mais status para filtro (ex: PENDING, RETRYING)
+     * @return lista de e-mails correspondentes aos status informados
      */
     List<EmailTO> findPending(final EmailStatus... statuses);
 
     /**
      * Persiste um e-mail no banco de dados.
+     *
+     * @param email e-mail a ser salvo
+     * @return entidade persistida com ID e timestamps atualizados
      */
     EmailTO save(final EmailTO email);
 
+    /**
+     * Realiza o envio de um e-mail.
+     *
+     * @param email e-mail a ser enviado
+     */
+    void send(final EmailTO email);
 }
