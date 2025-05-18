@@ -11,6 +11,10 @@
     <h3>🔗 Links Úteis</h3>
     <div align="left"> 
 
+   [![spring - Sending Email](https://img.shields.io/badge/Sending%20Email-spring-8BC34A)](https://docs.spring.io/spring-boot/reference/io/email.html)
+   [![spring - Email](https://img.shields.io/badge/Email-spring-8BC34A)](https://docs.spring.io/spring-framework/reference/integration/email.html)
+   [![google - como configurar gmail](https://img.shields.io/badge/como%20configurar%20gmail-google-8BC34A)](https://support.google.com/accounts/answer/185833)
+   [![google - Create and manage your app passwords](https://img.shields.io/badge/Create%20and%20manage%20your%20app%20passwords-google-8BC34A)](https://myaccount.google.com/apppasswords)
    [![guide - CompletableFuture](https://img.shields.io/badge/Completable--Future-guide-8BC34A)](https://concurrencydeepdives.com/guide-completable-future/)
    [![Oracle - Executor](https://img.shields.io/badge/Executor-oracle-8BC34A)](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html)
    [![Oracle - CompletableFuture](https://img.shields.io/badge/CompletableFuture-oracle-8BC34A)](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/CompletableFuture.html)

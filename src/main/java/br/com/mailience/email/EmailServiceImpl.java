@@ -23,35 +23,62 @@
  */
 package br.com.mailience.email;
 
+import static br.com.mailience.email.EmailStatus.FAILED;
+import static br.com.mailience.email.EmailStatus.RETRYING;
+import static br.com.mailience.email.EmailStatus.SENT;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Implementação do serviço de gerenciamento de e-mails.
+ * Implementacao do servico de gerenciamento de e-mails.
  *
  * <p>
- * Fornece operações para persistência e consulta de e-mails pendentes, integrando com o repositório de dados.
+ * Responsavel por buscar e-mails pendentes no repositório, persistir novos registros e realizar o envio por meio do
+ * {@link JavaMailSender}. Implementa a logica de tratamento para marcar e-mails como enviados ou em reprocessamento em
+ * caso de falha.
  * </p>
  */
 @Service
 @Slf4j
 class EmailServiceImpl implements EmailService {
 
-    private final int             workQueue;
-    private final EmailRepository repository;
+    private static final String       HEADER_EMAIL_ID = "X-Email-ID";
+    private final int                 pageSize;
+    private final String              from;
+    private final JavaMailSender      mailSender;
+    private final EmailRepository     repository;
+    private final TransactionTemplate transactionTemplate;
 
-    public EmailServiceImpl(@Value("${mailience.executor.work-queue}") final int workQueue, //
-            final EmailRepository repository) {
-        this.workQueue = workQueue;
+    EmailServiceImpl(@Value("${mailience.executor.work-queue}") final int pageSize,
+            @Value("${mailience.mail.from}") final String from,
+            final JavaMailSender mailSender,
+            final EmailRepository repository,
+            final TransactionTemplate transactionTemplate) {
+        this.pageSize = pageSize;
+        this.from = from;
+        this.mailSender = mailSender;
         this.repository = repository;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -60,7 +87,7 @@ class EmailServiceImpl implements EmailService {
     @Override
     @Transactional(readOnly = true)
     public List<EmailTO> findPending(final EmailStatus... statuses) {
-        var pageRequest = PageRequest.of(0, workQueue, Sort.by("id").ascending());
+        var pageRequest = PageRequest.of(0, pageSize, Sort.by("id").ascending());
         return repository.findByStatusIn(Arrays.asList(statuses), pageRequest);
     }
 
@@ -77,10 +104,108 @@ class EmailServiceImpl implements EmailService {
      * {@inheritDoc}
      */
     @Override
-    public void send(final EmailTO email) {
+    public void send(final List<EmailTO> batch) {
+        final Set<String> failedIds = new HashSet<>();
+        try {
+            var messages = batch.stream()
+                    .map(this::toMimeMessage)
+                    .toArray(MimeMessage[]::new);
 
-        log.info("✅ Enviado para {}", email.getRecipient());
+            mailSender.send(messages);
+            log.info("✅ {} e-mails enviados com sucesso.", batch.size());
 
+        } catch (MailSendException mse) {
+            mse.getFailedMessages().keySet().stream()
+                    .map(msg -> extractHeader((MimeMessage) msg, HEADER_EMAIL_ID))
+                    .filter(Objects::nonNull)
+                    .forEach(failedIds::add);
+
+            log.error("❌ Alguns e-mails falharam no envio: {}, detalhe: {} ", failedIds, mse.getMessage());
+        } finally {
+            for (var email : batch) {
+                if (failedIds.contains(email.getId().toString())) {
+                    markAsFailed(email);
+                } else {
+                    markAsSent(email);
+                }
+            }
+        }
     }
 
+    /**
+     * Converte um {@link EmailTO} em um {@link MimeMessage} pronto para envio.
+     *
+     * @param email e-mail a ser convertido
+     * @return mensagem formatada com headers e conteudo
+     */
+    private MimeMessage toMimeMessage(final EmailTO email) {
+        try {
+            var message = mailSender.createMimeMessage();
+            message.setHeader(HEADER_EMAIL_ID, email.getId().toString());
+
+            var helper = new MimeMessageHelper(message, true, UTF_8.name());
+
+            helper.setFrom(from);
+            helper.setTo(email.getRecipient());
+            helper.setSubject(email.getSubject());
+            helper.setText(email.getBody(), true);
+
+            return message;
+        } catch (Exception e) {
+            log.error("Erro ao criar MimeMessage para ID {}", email.getId(), e);
+            throw new RuntimeException("Erro ao criar mensagem", e);
+        }
+    }
+
+    /**
+     * Extrai o valor de um header especifico de uma {@link MimeMessage}.
+     *
+     * @param msg mensagem de onde o header sera extraido
+     * @param name nome do header
+     * @return valor do header, ou {@code null} se nao encontrado
+     */
+    private String extractHeader(final MimeMessage msg, final String name) {
+        try {
+            return msg.getHeader(name, null);
+        } catch (Exception e) {
+            log.warn("⚠️ Erro ao ler header '{}'", name, e);
+            return null;
+        }
+    }
+
+    /**
+     * Marca o e-mail como enviado e persiste a alteracao.
+     *
+     * @param email e-mail a ser atualizado
+     */
+    private void markAsSent(final EmailTO email) {
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(final TransactionStatus status) {
+                email.setAttempts(email.getAttempts() + 1);
+                email.setStatus(SENT);
+                repository.update(email);
+            }
+        });
+    }
+
+    /**
+     * Marca o e-mail para reprocessamento (RETRYING) e persiste a alteracao.
+     *
+     * @param email e-mail a ser atualizado
+     */
+    private void markAsFailed(final EmailTO email) {
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(final TransactionStatus status) {
+                email.setAttempts(email.getAttempts() + 1);
+                if (email.getAttempts() < 5) {
+                    email.setStatus(RETRYING);
+                } else {
+                    email.setStatus(FAILED);
+                }
+                repository.update(email);
+            }
+        });
+    }
 }

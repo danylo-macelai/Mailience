@@ -27,6 +27,9 @@ import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositório JPA para acesso e manipulação de e-mails.
@@ -45,5 +48,29 @@ interface EmailRepository extends JpaRepository<EmailTO, Long> {
      * @return Lista de e-mails com os status informados, respeitando os limites de paginação.
      */
     List<EmailTO> findByStatusIn(final List<EmailStatus> statuses, final Pageable pageable);
+
+    /**
+     * Atualiza os campos de tentativas de envio e status de envio de um e-mail específico.
+     *
+     * <p>
+     * Este método utiliza uma consulta JPQL personalizada para atualizar os campos:
+     * <ul>
+     * <li>{@code attempts}: Número de tentativas de envio falhas.</li>
+     * <li>{@code status}: Status de envio do e-mail.</li>
+     * </ul>
+     * </p>
+     *
+     * @param email o objeto {@link EmailTO} contendo os dados a serem atualizados. Deve incluir o identificador
+     *            {@code id} e os campos {@code attempts} e {@code status}.
+     */
+    @Modifying
+    @Query(nativeQuery = false, //
+            value = """
+                     UPDATE EmailTO E
+                     SET E.attempts = :#{#email.attempts},
+                         E.status = :#{#email.status}
+                     WHERE E.id = :#{#email.id}
+                    """)
+    void update(@Param("email") EmailTO email);
 
 }

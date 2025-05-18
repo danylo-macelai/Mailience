@@ -27,8 +27,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -50,12 +53,16 @@ import lombok.extern.slf4j.Slf4j;
 class SenderJob {
 
     private final ReentrantLock lock = new ReentrantLock();
-    private final EmailService  emailService;
-    private final Executor      senderExecutor;
+
+    private final int          batchSize;
+    private final EmailService emailService;
+    private final Executor     senderExecutor;
 
     SenderJob(
-            final EmailService emailService,
+            @Value("${mailience.executor.maximum-pool-size}") final int batchSize, //
+            final EmailService emailService, //
             @Qualifier("senderExecutor") final Executor senderExecutor) {
+        this.batchSize = batchSize;
         this.emailService = emailService;
         this.senderExecutor = senderExecutor;
     }
@@ -75,11 +82,16 @@ class SenderJob {
                 log.info("📧 Iniciando o job de envio de e-mails pendentes...");
                 var emails = emailService.findPending(EmailStatus.PENDING, EmailStatus.RETRYING);
                 if (!emails.isEmpty()) {
-                    log.info("🕒 {} e-mails encontrados para envio. Iniciando processamento paralelo...",
-                            emails.size());
+                    log.info("🕒 {} e-mails pendentes encontrados para envio.", emails.size());
 
-                    var futures = emails.stream()
-                            .map(email -> CompletableFuture.runAsync(() -> emailService.send(email), senderExecutor))
+                    var batches = IntStream.range(0, (emails.size() + batchSize - 1) / batchSize)
+                            .mapToObj(i -> emails.subList(i * batchSize, Math.min((i + 1) * batchSize, emails.size())))
+                            .collect(Collectors.toList());
+                    log.info("Processamento paralelo será feito em {} lote(s) de até {} e-mails.",
+                            batches.size(), batchSize);
+
+                    var futures = batches.stream()
+                            .map(batch -> CompletableFuture.runAsync(() -> emailService.send(batch), senderExecutor))
                             .toList();
 
                     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

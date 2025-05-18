@@ -35,25 +35,46 @@ import java.util.List;
 public interface EmailService {
 
     /**
-     * Busca e-mails com status pendente ou em falha para processamento em lote.
+     * Busca os e-mails com status pendente ou em reprocessamento, usando paginação.
      *
-     * @param statuses um ou mais status para filtro (ex: PENDING, RETRYING)
-     * @return lista de e-mails correspondentes aos status informados
+     * @param statuses status a serem considerados na busca
+     * @return lista paginada de e-mails a serem processados
      */
     List<EmailTO> findPending(final EmailStatus... statuses);
 
     /**
-     * Persiste um e-mail no banco de dados.
+     * Salva um e-mail no banco de dados.
      *
-     * @param email e-mail a ser salvo
-     * @return entidade persistida com ID e timestamps atualizados
+     * @param email entidade a ser persistida
+     * @return e-mail salvo com ID e timestamps atualizados
      */
     EmailTO save(final EmailTO email);
 
     /**
-     * Realiza o envio de um e-mail.
+     * Realiza o envio em lote de e-mails utilizando o {@link org.springframework.mail.javamail.JavaMailSenderImpl}.
      *
-     * @param email e-mail a ser enviado
+     * <p>
+     * Este método recebe uma lista de e-mails e os converte para instâncias de
+     * {@link jakarta.mail.internet.MimeMessage}, enviando todas de uma vez por meio do
+     * {@code JavaMailSenderImpl#send(MimeMessage...)}. Isso permite o reuso de conexão SMTP e reduz drasticamente o
+     * tempo total de envio, em comparação com o envio individual de cada e-mail.
+     * </p>
+     *
+     * <p>
+     * O envio em lote é mais eficiente, escalável e apropriado para sistemas que disparam notificações em massa. Em
+     * caso de falhas parciais, os e-mails com erro são identificados e marcados como {@link EmailStatus#RETRYING} ou
+     * {@link EmailStatus#FAILED}, de acordo com a quantidade de tentativas. Já os e-mails enviados com sucesso são
+     * atualizados para o status {@link EmailStatus#SENT}.
+     * </p>
+     *
+     * <p>
+     * O uso do {@code JavaMailSender} com arrays de {@code MimeMessage} é altamente recomendado para maximizar o
+     * throughput do sistema de envio, reduzir carga sobre o servidor SMTP e manter a consistência dos envios.
+     * </p>
+     *
+     * @param batch lista de e-mails a serem enviados
+     * @throws RuntimeException em caso de erro crítico ao criar ou enviar as mensagens
      */
-    void send(final EmailTO email);
+    void send(final List<EmailTO> batch);
+
 }
