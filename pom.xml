@@ -52,6 +52,8 @@
         <skipUnitTests>false</skipUnitTests>
         <skipIntegrationTests>false</skipIntegrationTests>
         <testFailureIgnore>false</testFailureIgnore>
+        
+        <resilience4j.version>2.3.0</resilience4j.version>
     </properties>
 
     <dependencies>
@@ -84,6 +86,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>${resilience4j.version}</version>
         </dependency>
 
         <dependency>

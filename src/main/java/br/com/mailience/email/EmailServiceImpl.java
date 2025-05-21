@@ -46,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,22 +61,25 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Service
 @Slf4j
-class EmailServiceImpl implements EmailService {
+public class EmailServiceImpl implements EmailService {
 
     private static final String       HEADER_EMAIL_ID = "X-Email-ID";
     private final int                 pageSize;
     private final String              from;
+    private final int                 maxAttempts;
     private final JavaMailSender      mailSender;
     private final EmailRepository     repository;
     private final TransactionTemplate transactionTemplate;
 
     EmailServiceImpl(@Value("${mailience.executor.work-queue}") final int pageSize,
             @Value("${mailience.mail.from}") final String from,
+            @Value("${mailience.mail.max.attempts}") final int maxAttempts,
             final JavaMailSender mailSender,
             final EmailRepository repository,
             final TransactionTemplate transactionTemplate) {
         this.pageSize = pageSize;
         this.from = from;
+        this.maxAttempts = maxAttempts;
         this.mailSender = mailSender;
         this.repository = repository;
         this.transactionTemplate = transactionTemplate;
@@ -104,7 +108,8 @@ class EmailServiceImpl implements EmailService {
      * {@inheritDoc}
      */
     @Override
-    public void send(final List<EmailTO> batch) {
+    @CircuitBreaker(name = "emailServiceSend", fallbackMethod = "sendFallback")
+    public void send(final String jobExecutionId, final List<EmailTO> batch) {
         final Set<String> failedIds = new HashSet<>();
         try {
             var messages = batch.stream()
@@ -120,9 +125,11 @@ class EmailServiceImpl implements EmailService {
                     .filter(Objects::nonNull)
                     .forEach(failedIds::add);
 
-            log.error("❌ Alguns e-mails falharam no envio: {}, detalhe: {} ", failedIds, mse.getMessage());
+            log.error("❌ Alguns e-mails falharam no envio: {}", failedIds);
+            throw mse;
         } finally {
             for (var email : batch) {
+                email.setJobExecutionId(jobExecutionId);
                 if (failedIds.contains(email.getId().toString())) {
                     markAsFailed(email);
                 } else {
@@ -130,6 +137,17 @@ class EmailServiceImpl implements EmailService {
                 }
             }
         }
+    }
+
+    /**
+     * Fallback acionado pelo Circuit Breaker quando o método send falha ou o circuito está aberto.
+     *
+     * @param batch lote de e-mails que não puderam ser enviados
+     * @param t exceção que causou o fallback
+     */
+    public void sendFallback(final String jobExecutionId, final List<EmailTO> batch, final Throwable t) {
+        log.info("CircuitBreaker acionado - envio de e-mails temporariamente bloqueado");
+        restoreToRetryingIfFailed(jobExecutionId);
     }
 
     /**
@@ -199,7 +217,7 @@ class EmailServiceImpl implements EmailService {
             @Override
             protected void doInTransactionWithoutResult(final TransactionStatus status) {
                 email.setAttempts(email.getAttempts() + 1);
-                if (email.getAttempts() < 5) {
+                if (email.getAttempts() < maxAttempts) {
                     email.setStatus(RETRYING);
                 } else {
                     email.setStatus(FAILED);
@@ -208,4 +226,22 @@ class EmailServiceImpl implements EmailService {
             }
         });
     }
+
+    /**
+     * Reativa e-mails marcados como {@link EmailStatus#FAILED}, dando a eles uma nova chance de serem reprocessados.
+     *
+     * Essa lógica é usada como fallback do Circuit Breaker para permitir uma última tentativa de envio em situações
+     * temporárias de falha.
+     *
+     * @param jobExecutionId identificador do job cujos e-mails serão atualizados
+     */
+    private void restoreToRetryingIfFailed(final String jobExecutionId) {
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(final TransactionStatus status) {
+                repository.restoreToRetryingIfFailed(maxAttempts - 1, RETRYING, jobExecutionId);
+            }
+        });
+    }
+
 }

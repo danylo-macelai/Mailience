@@ -99,4 +99,10 @@ public class EmailTO {
     @Column(name = "attempts", nullable = false)
     private int attempts;
 
+    /**
+     * Identificador do lote de envio (UUID do job que processou este e-mail).
+     */
+    @Column(name = "job_execution_id", nullable = true, length = 255)
+    private String jobExecutionId;
+
 }

@@ -23,6 +23,7 @@
  */
 package br.com.mailience.sender;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -78,8 +79,9 @@ class SenderJob {
     )
     void run() {
         if (lock.tryLock()) {
+            String jobExecutionId = UUID.randomUUID().toString();
             try {
-                log.info("📧 Iniciando o job de envio de e-mails pendentes...");
+                log.info("📧 Iniciando o job {} de envio de e-mails pendentes...", jobExecutionId);
                 var emails = emailService.findPending(EmailStatus.PENDING, EmailStatus.RETRYING);
                 if (!emails.isEmpty()) {
                     log.info("🕒 {} e-mails pendentes encontrados para envio.", emails.size());
@@ -91,7 +93,8 @@ class SenderJob {
                             batches.size(), batchSize);
 
                     var futures = batches.stream()
-                            .map(batch -> CompletableFuture.runAsync(() -> emailService.send(batch), senderExecutor))
+                            .map(batch -> CompletableFuture.runAsync(() -> emailService.send(jobExecutionId, batch),
+                                    senderExecutor))
                             .toList();
 
                     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
@@ -102,7 +105,7 @@ class SenderJob {
                 log.error("❌ Falha ao executar o job de envio de e-mails: {}", ex.getMessage(), ex);
             } finally {
                 lock.unlock();
-                log.info("🏁 Job de envio finalizado, lock liberado.");
+                log.info("🏁 Job {} de envio finalizado, lock liberado.", jobExecutionId);
             }
         } else {
             log.info("⚠️ O job de envio já está em execução. Esta execução foi ignorada para evitar concorrência.");

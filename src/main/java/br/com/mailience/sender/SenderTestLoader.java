@@ -95,7 +95,8 @@ class SenderTestLoader {
                             </html>
                             """.formatted(i),
                     EmailStatus.PENDING,
-                    0);
+                    0,
+                    null);
             service.save(email);
         }
 

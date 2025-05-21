@@ -68,9 +68,34 @@ interface EmailRepository extends JpaRepository<EmailTO, Long> {
             value = """
                      UPDATE EmailTO E
                      SET E.attempts = :#{#email.attempts},
-                         E.status = :#{#email.status}
+                         E.status = :#{#email.status},
+                         E.jobExecutionId = :#{#email.jobExecutionId}
                      WHERE E.id = :#{#email.id}
                     """)
-    void update(@Param("email") EmailTO email);
+    void update(@Param("email") final EmailTO email);
+
+    /**
+     * Restaura e-mails falhos para o status informado, atualizando o número de tentativas.
+     *
+     * <p>
+     * Usado para reprocessar e-mails associados a um job específico.
+     * </p>
+     *
+     * @param attempts novo número de tentativas a ser definido
+     * @param status novo status que os e-mails receberão (normalmente {@code RETRYING})
+     * @param jobExecutionId identificador do job cujos e-mails serão atualizados
+     */
+    @Modifying
+    @Query("""
+            UPDATE EmailTO E
+            SET E.attempts = :attempts,
+                E.status = :status
+            WHERE E.jobExecutionId = :jobId
+              AND E.status = 'FAILED'
+            """)
+    void restoreToRetryingIfFailed(
+            @Param("attempts") final int attempts,
+            @Param("status") final EmailStatus status,
+            @Param("jobId") final String jobExecutionId);
 
 }

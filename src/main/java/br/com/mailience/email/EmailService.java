@@ -72,9 +72,10 @@ public interface EmailService {
      * throughput do sistema de envio, reduzir carga sobre o servidor SMTP e manter a consistência dos envios.
      * </p>
      *
+     * @param jobExecutionId Identificador do lote de envio (UUID do job que processou este e-mail)
      * @param batch lista de e-mails a serem enviados
      * @throws RuntimeException em caso de erro crítico ao criar ou enviar as mensagens
      */
-    void send(final List<EmailTO> batch);
+    void send(final String jobExecutionId, final List<EmailTO> batch);
 
 }
